@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException, APIRouter, UploadFile, Form
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
-from app.models import RegisterRequest, LoginRequest
+from app.models import RegisterRequest, LoginRequest, TokenData
 from app.config import get_database
 import bcrypt
 import uuid
@@ -68,7 +68,7 @@ async def login_user(user: LoginRequest):
     found_user = await users_collection.find_one({"email": user.email})
 
     if not found_user or not bcrypt.checkpw(user.password.encode(), found_user["password"].encode()):
-        raise HTTPException(status_code=400, detail="Invalid credentials")
+        raise HTTPException(status_code=400, detail="ពាក្យសម្ងាត់ ឬ អ៊ីមែល មិនត្រឹមត្រូវ")
 
     token = create_access_token({"user_id": found_user["user_id"]})
     await users_collection.update_one({"email": user.email}, {"$set": {"token": token}})
@@ -105,7 +105,7 @@ async def update_profile(
     # Update password
     if newPassword:
         if not oldPassword or not bcrypt.checkpw(oldPassword.encode(), user["password"].encode()):
-            raise HTTPException(status_code=400, detail="Old password incorrect")
+            raise HTTPException(status_code=400, detail="ពាក្យសម្ងាត់ចាស់មិនត្រឹមត្រូវ")
         hashed_pw = bcrypt.hashpw(newPassword.encode(), bcrypt.gensalt()).decode()
         update_data["password"] = hashed_pw
 
@@ -134,4 +134,18 @@ async def update_profile(
             "name": update_data["name"],
             "profileImage": update_data.get("profileImage", user.get("profileImage"))
         }
+    }
+@user_router.post("/validate_token")
+async def validate_token(token: TokenData):
+    payload = verify_token(token.token)
+    user_id = payload.get("user_id")
+    users_collection = get_database().get_collection("user")
+    user = await users_collection.find_one({"user_id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {
+        "user_id": user["user_id"],
+        "name": user["name"],
+        "email": user["email"],
+        "profileImage": user.get("profileImage", "default.png")
     }

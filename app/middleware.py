@@ -6,7 +6,7 @@ SECRET_KEY = "supersecret"
 ALGORITHM = "HS256"
 
 async def token_check_middleware(request: Request, call_next):
-    if not request.url.path.startswith("/uploads") and request.url.path not in ["/chceck_payment_status","/login", "/register", "/docs", "/openapi.json", "/getproduct", "/getslides"]:
+    if not request.url.path.startswith("/uploads") and request.url.path not in ["/generate_qr","/chceck_payment_status","/login", "/register", "/docs", "/openapi.json", "/getproduct", "/getslides"]:
         auth_header = request.headers.get("Authorization")
         if not auth_header or not auth_header.startswith("Bearer "):
             raise HTTPException(status_code=401, detail="Unauthorized")

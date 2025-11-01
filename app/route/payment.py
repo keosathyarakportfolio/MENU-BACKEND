@@ -1,6 +1,6 @@
 from bakong_khqr import KHQR
 from fastapi import APIRouter , HTTPException 
-from app.models import CartQRRequest
+from app.models import PayRequest
 from bson.objectid import ObjectId
 from app.config import get_database
 
@@ -11,17 +11,25 @@ khqr = KHQR("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkYXRhIjp7ImlkIjoiODVjNWNmN2
 
 
 @router.post("/generate_qr")
-async def generate_payment_qr(products: CartQRRequest):
+async def generate_payment_qr(products: PayRequest):
     """
     Generate a Bakong KHQR Payment QR Code from JSON input.
     """
     try:
+        products_map = {item.id: item.quantity for item in products.products}
         amount = 0
         db = get_database()
         product_collection = db.get_collection("products")
-        cart_data = product_collection.find({"_id":  {"$in": [ ObjectId(item) for item in products.product_ids]}})
+        cart_data = product_collection.find({"_id":  {"$in": [ ObjectId(item) for item in products_map.keys()]}})
+        order_items = []
         async for product in cart_data:
-            amount += product["price"]
+            quantity = products_map.get(str(product["_id"]), 1)
+            order_items.append({
+                "name": product["name"],
+                "price": product["price"],
+                "quantity": quantity
+            })
+            amount += product["price"] * quantity
         qr = khqr.create_qr(
             bank_account='sathyarak_keo@aclb',
             merchant_name='NEW GENERATION',
@@ -38,7 +46,9 @@ async def generate_payment_qr(products: CartQRRequest):
         payment_collection = db.get_collection("payments")
         await payment_collection.insert_one({
             "qr_data": qr,
-            "amount": amount
+            "amount": amount,
+            "items": order_items
+
         })
         png_base64_uri = khqr.qr_image(qr, format="base64_uri")
         return {"qr_image_base64_uri": png_base64_uri}

@@ -29,7 +29,12 @@ class UserCreate(BaseModel):
 class User(BaseModel):
     username: str
 
-class CartQRRequest(BaseModel):
-    product_ids: list[str]  # e.g. ["671f2a84f8d1e21bdfce5b23", "671f2a84f8d1e21bdfce5b24"]
+class Product(BaseModel):
+    id: str
+    quantity: int
+class PayRequest(BaseModel):
+    products: list[Product]
+class TokenData(BaseModel):
+    token: str        
 
     

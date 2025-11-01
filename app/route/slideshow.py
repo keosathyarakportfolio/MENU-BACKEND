@@ -12,11 +12,10 @@ slideshow_collection = db["slideshows"]
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# 📸 Get all slides
 @router.get("/getslides")
 async def get_slides():
     slides = []
-    async for slide in slideshow_collection.find():
+    async for slide in slideshow_collection.find().sort("_id", -1):  # -1 = descending
         slide["_id"] = str(slide["_id"])
         slides.append(slide)
     return slides
